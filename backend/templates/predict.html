@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predict Baby Cry</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #1e1e1e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 26px;
+            margin-bottom: 15px;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .btn {
+            width: 90%;
+            max-width: 300px;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: 0.3s;
+        }
+        .btn-primary {
+            background-color: #ff6b00;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #e65c00;
+        }
+        .btn-secondary {
+            background-color: #333;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #444;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #ff6b00;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Upload an Audio File for Analysis</h1>
+    <input type="file" id="audioFile" accept="audio/*">
+    <button class="btn btn-primary" onclick="analyzeCry()">Analyze Cry</button>
+
+    <p id="result"></p>
+
+    <button class="btn btn-secondary" onclick="window.location.href='/'">Back to Home</button>
+
+    <script>
+        function analyzeCry() {
+            let fileInput = document.getElementById("audioFile");
+            let file = fileInput.files[0];
+
+            if (!file) {
+                alert("Please upload an audio file first.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/predict", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("result").innerText = "Prediction: " + data.predicted_class;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+    </script>
+
+</body>
+</html>

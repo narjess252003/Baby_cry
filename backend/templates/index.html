@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Cry Analysis</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e8f5e9;
+            color: #333;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            color: #00695c;
+            font-size: 40px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        .record-btn, .predict-btn {
+            background-color: #009688;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.3s, background-color 0.3s;
+        }
+        .record-btn:hover, .predict-btn:hover {
+            background-color: #00796b;
+            transform: scale(1.1);
+        }
+        .predict-btn {
+            background-color: #66bb6a;
+            color: white;
+            padding: 15px 25px;
+            font-size: 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            display: none;
+        }
+        .audio-container {
+            margin-top: 30px;
+            display: none;
+        }
+        audio {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        input[type="file"] {
+            margin-top: 15px;
+        }
+        .status {
+            font-size: 20px;
+            margin-top: 10px;
+            color: #666;
+            font-weight: 600;
+        }
+        #resultContainer {
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Baby Cry Analysis</h1>
+        <p>Press the button to record a baby's cry and get an analysis!</p>
+
+        <button class="record-btn" id="recordButton">🎤</button>
+        <p class="status" id="statusText">Click to start recording...</p>
+
+        <input type="file" id="uploadFile" accept=".wav" style="margin-top: 15px;">
+        <p id="fileStatus" class="status"></p>
+
+        <div class="audio-container">
+            <audio id="audioPlayback" controls></audio>
+        </div>
+
+        <button class="predict-btn" id="predictButton" style="display: none;">Predict Cry Type</button>
+
+        <!-- New Section for Prediction Result -->
+        <div id="resultContainer" style="display: none; margin-top: 20px;">
+            <h2 style="color: #00695c;">Prediction Result</h2>
+            <p id="resultText" style="font-size: 24px; font-weight: bold; color: #333;"></p>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+
+        // Record button functionality
+        document.getElementById("recordButton").addEventListener("click", async function() {
+            const recordButton = this;
+            const statusText = document.getElementById("statusText");
+            const audioPlayback = document.getElementById("audioPlayback");
+            const predictButton = document.getElementById("predictButton");
+
+            if (!mediaRecorder || mediaRecorder.state === "inactive") {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    recordedAudioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                    const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                    audioPlayback.src = audioUrl;
+                    audioPlayback.style.display = "block";
+                    document.querySelector(".audio-container").style.display = "block";
+                    predictButton.style.display = "block";
+                    statusText.innerText = "Recording saved! Ready to predict!";
+                };
+
+                mediaRecorder.start();
+                recordButton.classList.add("recording");
+                statusText.innerText = "Recording... Click to stop!";
+            } else {
+                mediaRecorder.stop();
+                recordButton.classList.remove("recording");
+            }
+        });
+
+        // Upload file functionality
+        document.getElementById("uploadFile").addEventListener("change", function(event) {
+            const file = event.target.files[0];
+            const statusText = document.getElementById("fileStatus");
+            const audioPlayback = document.getElementById("audioPlayback");
+            const predictButton = document.getElementById("predictButton");
+
+            if (file) {
+                if (file.type !== "audio/wav") {
+                    statusText.innerText = "Please upload a .wav file!";
+                    return;
+                }
+
+                const fileUrl = URL.createObjectURL(file);
+                audioPlayback.src = fileUrl;
+                audioPlayback.style.display = "block";
+                document.querySelector(".audio-container").style.display = "block";
+                predictButton.style.display = "block";
+                statusText.innerText = "File uploaded! Ready to predict!";
+            }
+        });
+
+        // Predict button functionality
+        document.getElementById("predictButton").addEventListener("click", function () {
+            const resultContainer = document.getElementById("resultContainer");
+            const resultText = document.getElementById("resultText");
+
+            let formData = new FormData();
+
+            if (recordedAudioBlob) {
+                formData.append("file", recordedAudioBlob, "recorded_audio.wav");
+            } else {
+                const fileInput = document.getElementById("uploadFile");
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    alert("Please upload a file or record an audio first!");
+                    return;
+                }
+                formData.append("file", file);
+            }
+
+            fetch("/predict", {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Failed to get prediction");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    if (data.prediction) {
+                        resultContainer.style.display = "block";
+                        resultText.innerText = `The baby's cry indicates: ${data.prediction}`;
+                    } else {
+                        resultContainer.style.display = "block";
+                        resultText.innerText = "Prediction is undefined.";
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert("An error occurred while predicting.");
+                });
+        });
+    </script>
+</body>
+
+</html>

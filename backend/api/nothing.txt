@@ -1,0 +1,42 @@
+API's: 
+    .role is to act as a bridge between your trained model and your frontend
+    .allows different software components to communicate
+
+API will handle:
+    1/Receiving an audio file (from a user or application).
+    2/Preprocessing the audio (converting it into features your model understands).
+    3/Passing the processed data to the trained model for prediction.
+    4/Returning the prediction result in a structured format (JSON)
+
+Flask will help us build a web service that:
+    Listens for requests (a user sending an audio file).
+    Processes the request.
+    Sends back a response.
+
+Flask is a micro-framework in Python
+
+API will expose certain endpoints (URLs) that the frontend or another system can call. For example:
+    POST /predict → Accepts an audio file, processes it, and returns a prediction.
+
+i will use Flask's request handling system to accept file uploads.
+
+Loading the audio file using Librosa.
+Extracting features MFCCs, Mel spectrograms, Chroma features, etc.
+Converting the features into the correct input format for your model.
+
+The model will output a predicted class ("hungry", "tired",discomfort,burping,belly_pain)
+
+API should load the trained model into memory once (to avoid reloading it on every request)
+
+After getting the model’s prediction, the API will:
+    Convert the result into a JSON format like:
+        json
+        {
+            "prediction": "hungry",
+            "confidence": 0.89
+        }
+    Send this response back to the frontend.
+
+Flask : Permet de créer une application web en Python.
+request : Permet d’accéder aux données envoyées dans une requête HTTP (comme les fichiers dans une requête POST).
+jsonify : Convertit un dictionnaire Python en réponse JSON.
