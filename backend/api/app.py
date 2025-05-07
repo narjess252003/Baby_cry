@@ -65,10 +65,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 
-# Twilio credentials (à stocker en sécurité !)
-account_sid = 'AC601aeca873ce05a1b1a46ae1372164ba'
-auth_token = '0888188f2860c73a0322d4cc56054499'
-twilio_number = 'YOUR_TWILIO_PHONE_NUMBER'
+
 # Load the machine learning model
 model_path = "C:/xamppp/htdocs/baby_cries_classification/backend/model/random_forest_model.pkl"
 model = joblib.load(model_path)
