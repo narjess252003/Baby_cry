@@ -2,57 +2,132 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class DatabaseHelper {
-  static const String baseUrl = 'http://localhost:5000'; // Flask server URL
+  static const String baseUrl = 'http://192.168.1.10:5000'; // Base URL of your Flask server
 
-  // Method to register a baby (user registration)
-  Future<Map<String, dynamic>> registerBaby(String fullName, String password, int age, String nationality) async {
+  /// Registers a baby and mother account
+  Future<Map<String, dynamic>> registerUser({
+    required String email,
+    required String password,
+    required String phone,
+    required DateTime birthDate,
+    required String nationality,
+    required String profession,
+    required String durationOutside,
+    required String additionalInfo,
+  }) async {
     final url = Uri.parse('$baseUrl/register-baby');
+
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'full_name': fullName,
+      body: jsonEncode({
+        'email': email,
         'password': password,
-        'age': age,
+        'phone_number': phone,
+        'birth_date': birthDate.toIso8601String(),
         'nationality': nationality,
+        'profession': profession,
+        'duration_outside': durationOutside,
+        'additional_info': additionalInfo,
       }),
     );
 
     if (response.statusCode == 200) {
-      return json.decode(response.body); // Success response
+      return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to register baby: ${response.body}');
+      throw Exception('Failed to register user: ${response.body}');
     }
   }
 
-  // Method to log in a user
-  Future<Map<String, dynamic>> loginUser(String fullName, String password) async {
+
+  /// Verifies the OTP sent to the user
+  Future<bool> verifyOTP(String email, String code) async {
+    final url = Uri.parse('$baseUrl/verifyOTP');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'otp': code,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['status'] == 'success';
+      } else {
+        throw Exception('OTP verification failed: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error during OTP verification: $e');
+    }
+  }
+
+  /// Logs in a mother
+  Future<Map<String, dynamic>> loginUser(String email, String password) async {
     final url = Uri.parse('$baseUrl/login-baby');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'full_name': fullName,
-        'password': password,
-      }),
-    );
 
-    if (response.statusCode == 200) {
-      return json.decode(response.body); // Success response
-    } else {
-      throw Exception('Login failed: ${response.body}');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data != null && data.containsKey('user') && data['user'] != null) {
+          return {'user': data['user']};
+        } else {
+          return {'error': 'User not found in response'};
+        }
+      } else {
+        final data = json.decode(response.body);
+        throw Exception('Login failed: ${data['message'] ?? data['error'] ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      print('Error logging in: $e');
+      throw Exception('An error occurred during login');
     }
   }
 
-  // Method to fetch all baby info (if needed for frontend display)
-  Future<List<Map<String, dynamic>>> getAllBabies() async {
-    final url = Uri.parse('$baseUrl/get-babies'); // Assumes a new endpoint to fetch all babies
-    final response = await http.get(url);
+  /// Fetch baby and mother data by ID
+  Future<Map<String, dynamic>> getBabyById(int id) async {
+    final url = Uri.parse('$baseUrl/get-baby/$id');
 
-    if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(json.decode(response.body));
-    } else {
-      throw Exception('Failed to fetch baby information: ${response.body}');
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to fetch baby data: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error while fetching baby data: $e');
+    }
+  }
+
+  /// Fetches all baby profiles
+  Future<List<Map<String, dynamic>>> getAllBabies() async {
+    final url = Uri.parse('$baseUrl/get-babies');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(json.decode(response.body));
+      } else {
+        throw Exception('Failed to fetch baby profiles: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error while fetching baby profiles: $e');
     }
   }
 }
