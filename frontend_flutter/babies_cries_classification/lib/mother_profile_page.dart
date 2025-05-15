@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'login.dart';
 
 class MotherInfo {
   final int id;
@@ -50,6 +49,7 @@ class MotherInfo {
     );
   }
 }
+
 class MotherProfilePage extends StatefulWidget {
   final int motherId;
 
@@ -79,11 +79,6 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  Future<int?> getMotherId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('mother_id');
   }
 
   Future<void> _loadImagePath() async {
@@ -141,13 +136,6 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
     }
   }
 
-  Future<void> logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Logged out successfully")));
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
   Widget profileItem(String label, String value) {
     return Card(
       color: Colors.white.withOpacity(0.9),
@@ -155,19 +143,8 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ListTile(
         leading: const Icon(Icons.info_outline),
-        title: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        subtitle: Text(
-          value,
-          style: const TextStyle(
-            color: Colors.black87,
-          ),
-        ),
+        title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+        subtitle: Text(value, style: const TextStyle(color: Colors.black87)),
       ),
     );
   }
@@ -186,10 +163,9 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
           fontWeight: FontWeight.w600,
           fontSize: 22,
         ),
-
       ),
       body: FutureBuilder<MotherInfo?>(
-        future: motherInfoFuture,  // Use motherInfoFuture for data fetching
+        future: motherInfoFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Colors.blueAccent));
@@ -203,18 +179,8 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
               opacity: _fadeAnimation,
               child: Stack(
                 children: [
-                  Positioned.fill(
-                    child: Image.asset(
-                      'assets/art5.gif',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(color: Colors.black.withOpacity(0.1)),
-                    ),
-                  ),
+                  Positioned.fill(child: Image.asset('assets/art5.gif', fit: BoxFit.cover)),
+                  Positioned.fill(child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(color: Colors.black.withOpacity(0.1)))),
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: ListView(
@@ -249,20 +215,17 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
                             final result = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => EditProfilePage(
-                                  motherInfo: mother,
-                                  motherId: mother.id,
-                                ),
+                                builder: (context) => EditProfilePage(motherInfo: mother, motherId: mother.id),
                               ),
                             );
 
                             if (result == true) {
                               setState(() {
-                                motherInfoFuture = fetchMotherProfile(widget.motherId); // Refresh profile data
+                                motherInfoFuture = fetchMotherProfile(widget.motherId);
                               });
                             }
                           },
-                          child: Text('Edit Profile'),
+                          child: const Text('Edit Profile'),
                         ),
                       ],
                     ),
@@ -276,8 +239,6 @@ class _MotherProfilePageState extends State<MotherProfilePage> with SingleTicker
     );
   }
 }
-
-
 
 class EditProfilePage extends StatefulWidget {
   final MotherInfo motherInfo;
@@ -333,40 +294,51 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return prefs.getInt('mother_id');
   }
 
-  Future<void> updateMotherProfile() async {
-    final motherId = await getMotherId();
+  Future<void> _saveChanges() async {
+    final updatedData = {
+      "email": emailController.text,
+      "phone_number": phoneController.text,
+      "date_of_birth": dobController.text,
+      "age": int.tryParse(ageController.text) ?? widget.motherInfo.age,
+      "nationality": nationalityController.text,
+      "job_status": jobStatusController.text.toLowerCase() == "employed" ? 1 : 0,
+      "job_title": jobTitleController.text,
+      "time_outside_home": timeOutsideHomeController.text,
+      "additional_info": additionalInfoController.text,
+    };
 
-    if (motherId == null) {
-      print('Mother ID not found.');
-      return;
-    }
-
-    final url = Uri.parse('http://192.168.1.10:5000/api/mother/update/$motherId');
+    final url = Uri.parse('http://192.168.1.10:5000/api/mother/update/${widget.motherId}');
     final response = await http.put(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode({
-        'email': emailController.text,
-        'phone_number': phoneController.text,
-        'date_of_birth': dobController.text,
-        'age': ageController.text,
-        'nationality': nationalityController.text,
-        'job_status': jobStatusController.text,
-        'job_title': jobTitleController.text,
-        'time_outside_home': timeOutsideHomeController.text,
-        'additional_info': additionalInfoController.text,
-      }),
+      body: jsonEncode(updatedData),
     );
 
     if (response.statusCode == 200) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => MotherProfilePage(motherId: motherId)),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile updated successfully")),
       );
+      Navigator.pop(context, true); // ⬅ Important pour signaler le rafraîchissement
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update profile')),
+        const SnackBar(content: Text("Failed to update profile")),
       );
+    }
+  }
+
+  Future<MotherInfo?> fetchMotherProfile(int id) async {
+    final url = Uri.parse('http://192.168.1.10:5000/api/mother/$id');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return MotherInfo.fromJson(data);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching profile: $e');
+      return null;
     }
   }
 
@@ -413,17 +385,60 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 _buildTextField(additionalInfoController, "Additional Info"),
                 _buildTextField(ageController, "Age", keyboardType: TextInputType.number),
                 const SizedBox(height: 30),
-                MaterialButton(
-                  onPressed: updateMotherProfile,
-                  color: const Color(0xFFE1BEE7), // Light calm purple
-                  elevation: 5,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                ElevatedButton(
+                  onPressed: () async {
+                    final updatedData = {
+                      "email": emailController.text,
+                      "phone_number": phoneController.text,
+                      "date_of_birth": dobController.text,
+                      "age": int.tryParse(ageController.text) ?? widget.motherInfo.age,
+                      "nationality": nationalityController.text,
+                      "job_status": jobStatusController.text.toLowerCase() == "employed" ? 1 : 0,
+                      "job_title": jobTitleController.text,
+                      "time_outside_home": timeOutsideHomeController.text,
+                      "additional_info": additionalInfoController.text,
+                    };
+
+                    final url = Uri.parse('http://192.168.1.10:5000/mother/${widget.motherId}/update');
+                    final response = await http.put(
+                      url,
+                      headers: {'Content-Type': 'application/json'},
+                      body: jsonEncode(updatedData),
+                    );
+
+                    if (response.statusCode == 200) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Profile updated successfully")),
+                      );
+
+                      // Fetch updated profile
+                      MotherInfo? updatedProfile = await fetchMotherProfile(widget.motherId);
+                      if (updatedProfile != null) {
+                        Navigator.pop(context, updatedProfile); // Send back updated profile if needed
+                      } else {
+                        Navigator.pop(context, true); // Fallback if profile fetch fails
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Failed to update profile")),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE1BEE7),
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
                   child: const Text(
                     'Save Changes',
-                    style: TextStyle(fontSize: 18, color: Colors.black87, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.black87,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

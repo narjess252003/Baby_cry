@@ -1,5 +1,5 @@
 import datetime
-from mailbox import Babyl
+from mailbox import Babyl, Error
 import sys
 import os
 import logging
@@ -65,8 +65,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 
-
-# Load the machine learning model
+#Load the machine learning model
 model_path = "C:/xamppp/htdocs/baby_cries_classification/backend/model/random_forest_model.pkl"
 model = joblib.load(model_path)
 
@@ -86,6 +85,7 @@ def get_db_connection():
         db='babies_cries'        # Replace with your database name
     )
     return connection
+
 
 class Babyl(db.Model):
     __tablename__ = 'babies'
@@ -118,7 +118,7 @@ class Mother(db.Model):
 
     def __repr__(self):
         return f"<Mother {self.email}>"
-    
+
 # Define the CryPrediction model
 class CryPrediction(db.Model):
     __tablename__ = 'cry_predictions'
@@ -129,6 +129,150 @@ class CryPrediction(db.Model):
     prediction = db.Column(db.String(50), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+class BabyHealth(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    baby_id = db.Column(db.String(50), nullable=False)
+    height = db.Column(db.Float, nullable=True)
+    weight = db.Column(db.Float, nullable=True)
+    temperature = db.Column(db.Float, nullable=True)
+    vaccination_date = db.Column(db.String(50), nullable=True)
+    notes = db.Column(db.String(500), nullable=True)
+    date_added = db.Column(db.DateTime, default=datetime.utcnow)
+
+health_data = {}
+
+@app.route('/api/baby-health', methods=['POST'])
+def add_baby_health_data():
+    data = request.get_json()
+
+    baby_id = data.get('baby_id')
+    temperature = data.get('temperature')
+    weight = data.get('weight')
+    vaccine_name = data.get('vaccine_name')
+    vaccination_date = data.get('vaccination_date')
+
+    try:
+        with mysql.cursor() as cursor:
+            # Insert into baby_temperature
+            cursor.execute("""
+                INSERT INTO baby_temperature (baby_id, temperature, record_date)
+                VALUES (%s, %s, CURDATE())
+            """, (baby_id, temperature))
+
+            # Insert into baby_weight
+            cursor.execute("""
+                INSERT INTO baby_weight (baby_id, weight, record_date)
+                VALUES (%s, %s, CURDATE())
+            """, (baby_id, weight))
+
+            # Insert into baby_vaccination
+            cursor.execute("""
+                INSERT INTO baby_vaccination (baby_id, vaccine_name, vaccination_date, status)
+                VALUES (%s, %s, %s, 'Completed')
+            """, (baby_id, vaccine_name, vaccination_date))
+
+            mysql.commit()
+            return jsonify({"message": "Health data added successfully"}), 200
+
+    except Exception as e:
+        mysql.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+
+@app.route('/baby-health-history/<int:baby_id>', methods=['GET'])
+def get_baby_health_history(baby_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(MySQLdb.cursors.DictCursor)  # <-- FIXED
+
+    # Fetch temperature records
+    cursor.execute("SELECT temperature, record_date FROM baby_temperature WHERE baby_id = %s ORDER BY record_date DESC", (baby_id,))
+    temperature_data = cursor.fetchall()
+
+    # Fetch weight records
+    cursor.execute("SELECT weight, record_date FROM baby_weight WHERE baby_id = %s ORDER BY record_date DESC", (baby_id,))
+    weight_data = cursor.fetchall()
+
+    # Fetch vaccination records
+    cursor.execute("SELECT vaccine_name, vaccination_date, status FROM baby_vaccination WHERE baby_id = %s ORDER BY vaccination_date DESC", (baby_id,))
+    vaccination_data = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify({
+        "temperature": temperature_data,
+        "weight": weight_data,
+        "vaccination": vaccination_data
+    })
+
+@app.route('/update_profile_picture/<int:baby_id>', methods=['POST'])
+def update_profile_pict(baby_id):
+    if 'file' not in request.files:
+        return jsonify({'message': 'Missing file'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        try:
+            file.save(filepath)
+        except Exception as e:
+            return jsonify({'message': f"Failed to save file: {str(e)}"}), 500
+
+        relative_path = f"uploads/{unique_filename}"  # Only relative path
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE babies 
+                SET profile_picture_path = %s 
+                WHERE id = %s
+            """, (relative_path, baby_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'message': 'Profile picture updated successfully',
+                'profile_picture_url': f"/{relative_path}"
+            }), 200
+
+        except Exception as e:
+            return jsonify({'message': f"Database error: {str(e)}"}), 500
+
+    return jsonify({'message': 'Invalid file type'}), 400
+
+@app.route('/update_baby/<int:baby_id>', methods=['PUT'])
+def update_baby(baby_id):
+    data = request.get_json()
+    try:
+        cursor = mysql.cursor()
+        cursor.execute("""
+            UPDATE babies
+            SET first_name = %s, last_name = %s, age = %s, nationality = %s, health_status = %s
+            WHERE id = %s
+        """, (
+            data.get('first_name'),
+            data.get('last_name'),
+            data.get('age'),
+            data.get('nationality'),
+            data.get('health_status'),
+            baby_id
+        ))
+        mysql.commit()
+        cursor.close()
+        return jsonify({'message': 'Baby profile updated successfully!'}), 200
+    except Exception as e:
+        logging.error(f"Error updating baby: {e}")
+        return jsonify({'error': str(e)}), 500
+    
 # Route to get predictions for a particular baby and their statistics
 @app.route('/get_cry_stats/<int:baby_id>', methods=['GET'])
 def get_cry_stats(baby_id):
@@ -178,7 +322,7 @@ def get_cry_stats(baby_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/mother/update/<int:id>', methods=['PUT'])
+@app.route('/mother/<int:id>/update', methods=['POST', 'PUT'])
 def update_mother_profile(id):
     # Get the data from the request
     data = request.get_json()
@@ -310,17 +454,21 @@ def get_pictures():
 
     try:
         cursor = mysql.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT file_path FROM album_pictures WHERE baby_id = %s", (baby_id,))
+        cursor.execute("SELECT file_path, created_at FROM album_pictures WHERE baby_id = %s ORDER BY created_at DESC", (baby_id,))
         pictures = cursor.fetchall()
         cursor.close()
 
         base_url = "http://192.168.1.10:5000"
-        image_urls = [f"{base_url}/uploads/{os.path.basename(p['file_path'])}" for p in pictures]
+        image_data = [{
+            "url": f"{base_url}/uploads/{os.path.basename(p['file_path'])}",
+            "date": p['created_at'].strftime("%Y-%m-%d %H:%M:%S")  # format lisible
+        } for p in pictures]
 
-        return jsonify(image_urls), 200
+        return jsonify(image_data), 200
     except Exception as e:
         logging.error(f"Error fetching pictures: {e}")
         return jsonify({"error": str(e)}), 500
+
 @app.route('/upload_picture', methods=['POST'])
 def upload_picture():
     try:
@@ -515,7 +663,7 @@ def add_baby():
     except Exception as e:
         logging.error(f"Error adding baby: {e}")
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/api/mother/<int:mother_id>', methods=['GET'])
 def get_mother_info(mother_id):
     try:
@@ -525,8 +673,8 @@ def get_mother_info(mother_id):
         cursor.close()
 
         if mother:
+            # Ajouter l'URL complète si la photo existe
             if mother.get('profile_picture'):
-                # Add the base URL in the profile_picture path
                 mother['profile_picture'] = f"http://192.168.1.10:5000/{mother['profile_picture']}"
             return jsonify(mother), 200
         else:
@@ -535,7 +683,7 @@ def get_mother_info(mother_id):
         logging.error(f"Error fetching mother info: {e}")
         return jsonify({'error': str(e)}), 500
 
-
+    
 @app.route('/get_images/<int:baby_id>', methods=['GET'])
 def get_images(baby_id):
     try:
@@ -857,16 +1005,18 @@ def get_babies_by_mother(mother_id):
 @app.route('/get_baby_profile/<int:baby_id>', methods=['GET'])
 def get_baby_profile(baby_id):
     try:
-        cursor = mysql.cursor(MySQLdb.cursors.DictCursor)
+        conn = get_db_connection()
+        cursor = conn.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("SELECT * FROM babies WHERE id = %s", (baby_id,))
         result = cursor.fetchone()
         cursor.close()
+        conn.close()
 
         if result:
             profile_picture_url = None
             if result['profile_picture_path']:
-                # ✅ Only return the relative path
-                profile_picture_url = f"/uploads/{os.path.basename(result['profile_picture_path'])}"
+                # Return relative URL
+                profile_picture_url = f"/{result['profile_picture_path']}"
 
             return jsonify({
                 'id': result['id'],
@@ -882,6 +1032,7 @@ def get_baby_profile(baby_id):
     except Exception as e:
         logging.error(f"Error fetching baby profile: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 # Get baby info by ID
 @app.route('/get-baby/<int:id>', methods=['GET'])
@@ -906,6 +1057,7 @@ def get_baby(id):
     except Exception as e:
         logging.error(f"Error fetching baby info: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/save_prediction', methods=['POST'])
 def save_prediction():

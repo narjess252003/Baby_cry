@@ -15,6 +15,7 @@ import 'add_babies.dart'; // Make sure this file exists
 import 'package:file_picker/file_picker.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import 'app_localizations.dart';
 import 'mother_profile_page.dart';
 
 class CryAnalysisPage extends StatefulWidget {
@@ -77,28 +78,21 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
       print('Failed to load baby details: ${response.body}');
     }
   }
-  Map<String, Map<String, String>> _predictionMessages = {
-    "hungry": {
-      "message": "Your baby might be hungry",
-      "emoji": "🍼"
-    },
-    "tired": {
-      "message": "Your baby might be tired",
-      "emoji": "😴"
-    },
-    "belly_pain": {
-      "message": "Your baby may have belly pain",
-      "emoji": "🤕"
-    },
-    "discomfort": {
-      "message": "Your baby feels discomfort",
-      "emoji": "😣"
-    },
-    "burping": {
-      "message": "Your baby might need to burp",
-      "emoji": "🤭"
+  String getLocalizedMessage(String key, BuildContext context) {
+    return AppLocalizations.of(context).translate('${key}_message');
+  }
+
+  String getEmoji(String key) {
+    switch (key) {
+      case "hungry": return "🍼";
+      case "tired": return "😴";
+      case "belly_pain": return "🤕";
+      case "discomfort": return "😣";
+      case "burping": return "🤭";
+      default: return "🔍";
     }
-  };
+  }
+
 
   Future<void> _init() async {
     await _audioRecorder.openRecorder();
@@ -221,9 +215,8 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
         var jsonResponse = json.decode(responseBody);
         String predictedCry = jsonResponse['prediction'];
 
-        String message = _predictionMessages[predictedCry]?['message'] ??
-            "Unknown cry";
-        String emoji = _predictionMessages[predictedCry]?['emoji'] ?? "🔍";
+        String message = getLocalizedMessage(predictedCry, context);
+        String emoji = getEmoji(predictedCry);
 
         setState(() {
           _predictionResult = "$emoji  $message";
@@ -257,7 +250,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
             elevation: 0,
             centerTitle: true,
             title: Text(
-              "Cry Analysis",
+              AppLocalizations.of(context).translate('cry_analysis_title'),
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 24,
@@ -274,7 +267,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.menu, color: Colors.white),
-                tooltip: 'Open tools',
+                tooltip: AppLocalizations.of(context).translate('open_tools'),
                 onPressed: () {
                   setState(() {
                     _showDrawer = !_showDrawer;
@@ -283,7 +276,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
               ),
               IconButton(
                 icon: const Icon(Icons.child_care, color: Colors.white),
-                tooltip: 'Choose a Baby',
+                tooltip: AppLocalizations.of(context).translate('choose_baby'),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -359,7 +352,9 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                                 ),
                                 SizedBox(height: 6),
                                 Text(
-                                  _isRecording ? "Recording..." : "Record",
+                                  _isRecording
+                                      ? AppLocalizations.of(context)!.translate("recording")
+                                      : AppLocalizations.of(context)!.translate("record"),
                                   style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -395,7 +390,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                                 ),
                                 SizedBox(height: 6),
                                 Text(
-                                  "Upload Audio",
+                                  AppLocalizations.of(context)!.translate("upload_audio"),
                                   style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -434,7 +429,9 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                               ),
                               SizedBox(height: 6),
                               Text(
-                                _isPlaying ? "Playing..." : "Play",
+                                _isPlaying
+                                    ? AppLocalizations.of(context)!.translate("playing")
+                                    : AppLocalizations.of(context)!.translate("play"),
                                 style: TextStyle(color: Colors.blueGrey, fontSize: 13),
                               ),
                             ],
@@ -455,7 +452,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                           ),
                           icon: Icon(Icons.analytics, color: Colors.white),
                           label: Text(
-                            "Analyze Cry",
+                            AppLocalizations.of(context)!.translate("analyze_cry"),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -469,7 +466,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
 
                         if (_recordingPath.isNotEmpty)
                           Text(
-                            "File: ${_recordingPath.split('/').last}",
+                            "${AppLocalizations.of(context)!.translate("file")}: ${_recordingPath.split('/').last}",
                             style: TextStyle(color: Colors.blueGrey, fontSize: 13),
                           ),
 
@@ -547,20 +544,21 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Tools",
-                              style: TextStyle(
+                              AppLocalizations.of(context).translate('tools_title'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            SizedBox(height: 20),
+                            const SizedBox(height: 20),
+
                             // Add Baby Button
                             ListTile(
-                              leading: Icon(Icons.add_circle, color: Colors.white),
+                              leading: const Icon(Icons.add_circle, color: Colors.white),
                               title: Text(
-                                "Add Baby",
-                                style: TextStyle(color: Colors.white),
+                                AppLocalizations.of(context).translate('add_baby'),
+                                style: const TextStyle(color: Colors.white),
                               ),
                               onTap: () {
                                 Navigator.push(
@@ -569,12 +567,13 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                                 );
                               },
                             ),
+
                             // Mother Profile Button
                             ListTile(
-                              leading: Icon(Icons.account_circle, color: Colors.white),
+                              leading: const Icon(Icons.account_circle, color: Colors.white),
                               title: Text(
-                                "Mother Profile",
-                                style: TextStyle(color: Colors.white),
+                                AppLocalizations.of(context).translate('mother_profile'),
+                                style: const TextStyle(color: Colors.white),
                               ),
                               onTap: () async {
                                 SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -590,52 +589,61 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text("Mother not logged in."),
+                                      content: Text(AppLocalizations.of(context).translate('mother_not_logged_in')),
                                     ),
                                   );
                                 }
                               },
                             ),
-                            SizedBox(height: 20),
+
+                            const SizedBox(height: 20),
+
                             ListTile(
-                              leading: Icon(Icons.insert_chart, color: Colors.white),
-                              title: Text("Baby Health", style: TextStyle(color: Colors.white)),
+                              leading: const Icon(Icons.insert_chart, color: Colors.white),
+                              title: Text(
+                                AppLocalizations.of(context).translate('baby_health'),
+                                style: const TextStyle(color: Colors.white),
+                              ),
                               onTap: () {
-                                // Navigate to the resultsPredicted page
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => BabyHealthApp(babyId: int.parse(_connectedBabyId!)),
+                                    builder: (context) => BabyHealthInputPage(babyId: _connectedBabyId!),
                                   ),
                                 );
-
-
                               },
                             ),
-                            SizedBox(height: 20),
+
+                            const SizedBox(height: 20),
+
                             ListTile(
-                              leading: Icon(Icons.insert_chart, color: Colors.white),
-                              title: Text("Cry Stats", style: TextStyle(color: Colors.white)),
+                              leading: const Icon(Icons.insert_chart, color: Colors.white),
+                              title: Text(
+                                AppLocalizations.of(context).translate('cry_stats'),
+                                style: const TextStyle(color: Colors.white),
+                              ),
                               onTap: () {
-                                // Navigate to the resultsPredicted page
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => ResultsPredictedPage()), // Replace with your results page
+                                  MaterialPageRoute(builder: (context) => ResultsPredictedPage()),
                                 );
                               },
                             ),
 
                             ListTile(
-                              leading: Icon(Icons.logout, color: Colors.white),
-                              title: Text("Log out", style: TextStyle(color: Colors.white)),
+                              leading: const Icon(Icons.logout, color: Colors.white),
+                              title: Text(
+                                AppLocalizations.of(context).translate('logout'),
+                                style: const TextStyle(color: Colors.white),
+                              ),
                               onTap: () async {
-                                // Call the logout method
                                 await logout();
                               },
                             ),
-                            Spacer(),
 
+                            const Spacer(),
                           ],
+
                         ),
                       ),
                     ),
@@ -651,6 +659,7 @@ class _CryAnalysisPageState extends State<CryAnalysisPage> {
 }
 
 class ResultsPredictedPage extends StatefulWidget {
+
   @override
   _ResultsPredictedPageState createState() => _ResultsPredictedPageState();
 }
@@ -885,230 +894,431 @@ class _ResultsPredictedPageState extends State<ResultsPredictedPage> {
     );
   }
 }
-class BabyHealthApp extends StatelessWidget {
-  final int babyId;
-  const BabyHealthApp({super.key, required this.babyId});
+
+class BabyHealthInputPage extends StatefulWidget {
+  final String babyId;
+
+  BabyHealthInputPage({required this.babyId});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Baby Health Tracker',
-      theme: ThemeData(primarySwatch: Colors.teal),
-      home: HomePage(babyId: babyId),
-    );
-  }
+  _BabyHealthInputPageState createState() => _BabyHealthInputPageState();
 }
 
-class BabyHealthData {
-  final double height;
-  final double weight;
-  final double temperature;
-  final String vaccination;
+class _BabyHealthInputPageState extends State<BabyHealthInputPage> {
+  final _temperatureController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _vaccineNameController = TextEditingController();
+  DateTime? _vaccinationDate;
+  String? _connectedBabyId;
 
-  BabyHealthData({
-    required this.height,
-    required this.weight,
-    required this.temperature,
-    required this.vaccination,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'height': height,
-    'weight': weight,
-    'temperature': temperature,
-    'vaccination': vaccination,
-  };
-
-  factory BabyHealthData.fromJson(Map<String, dynamic> json) {
-    return BabyHealthData(
-      height: (json['height'] as num).toDouble(),
-      weight: (json['weight'] as num).toDouble(),
-      temperature: (json['temperature'] as num).toDouble(),
-      vaccination: json['vaccination'],
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadConnectedBabyDetails();
   }
-}
-
-class HealthStorage {
-  Future<void> saveData(int babyId, BabyHealthData data) async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('health_$babyId', jsonEncode(data.toJson()));
-  }
-
-  Future<BabyHealthData?> loadData(int babyId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString('health_$babyId');
-    if (jsonString == null) return null;
-    return BabyHealthData.fromJson(jsonDecode(jsonString));
-  }
-}
-
-class HomePage extends StatelessWidget {
-  final int babyId;
-  const HomePage({super.key, required this.babyId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Baby Health Tracker")),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              child: const Text("Enter Health Data"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InputPage(babyId: babyId),
-                  ),
-                );
-              },
+      body: Stack(
+        children: [
+          // 🌸 Animated Watercolor Background
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage("assets/art5.gif"), // Add your GIF in assets
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              child: const Text("View Statistics"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StatsPage(babyId: babyId),
-                  ),
-                );
-              },
+          ),
+
+          // 🌟 Foreground Content
+          SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+            child: Card(
+              color: Colors.white.withOpacity(0.85),
+              elevation: 10,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Text(
+                        "Baby Health Input",
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    _buildInputField("Temperature (°C)", _temperatureController),
+                    const SizedBox(height: 16),
+
+                    _buildInputField("Weight (kg)", _weightController),
+                    const SizedBox(height: 16),
+
+                    _buildInputField("Vaccine Name", _vaccineNameController),
+                    const SizedBox(height: 16),
+
+                    // 📅 Vaccination Date Picker
+                    Row(
+                      children: [
+                        Icon(Icons.date_range, color: Colors.deepPurple),
+                        const SizedBox(width: 8),
+                        Text(
+                          _vaccinationDate == null
+                              ? 'Select Vaccination Date'
+                              : 'Vaccination Date: ${_vaccinationDate!.toString().split(' ')[0]}',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.calendar_today, color: Colors.deepPurple),
+                          onPressed: () async {
+                            DateTime? date = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime.now(),
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (date != null) {
+                              setState(() {
+                                _vaccinationDate = date;
+                              });
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // 🚀 Submit Button
+                    _buildAnimatedButton(
+                      label: 'Submit',
+                      color: Colors.blueGrey,
+                      onPressed: _submitHealthData,
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 📊 View History Button
+                    _buildAnimatedButton(
+                      label: 'View Baby Health History',
+                      color: Colors.deepPurpleAccent,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BabyHealthHistoryPage(babyId: widget.babyId),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 💬 Text Field Builder
+  Widget _buildInputField(String label, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.deepPurple),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.deepPurple.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.deepPurple, width: 2),
         ),
       ),
     );
   }
+
+  // ✨ Animated Button Builder
+  Widget _buildAnimatedButton({
+    required String label,
+    required VoidCallback onPressed,
+    required Color color,
+  }) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(vertical: 14),
+          backgroundColor: color,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          elevation: 5,
+        ),
+        onPressed: onPressed,
+        child: Center(
+          child: Text(label, style: TextStyle(fontSize: 16, color: Colors.white)),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadConnectedBabyDetails() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _connectedBabyId = prefs.getString('connected_baby_id');
+  }
+
+  Future<void> _submitHealthData() async {
+    final temperature = double.tryParse(_temperatureController.text);
+    final weight = double.tryParse(_weightController.text);
+    final vaccineName = _vaccineNameController.text;
+    final vaccinationDate = _vaccinationDate;
+
+    if (temperature == null || weight == null || vaccineName.isEmpty || vaccinationDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please fill all fields correctly')));
+      return;
+    }
+
+    final url = Uri.parse('http://192.168.1.10:5000/api/baby-health');
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'baby_id': int.parse(widget.babyId),
+        'temperature': temperature,
+        'weight': weight,
+        'vaccine_name': vaccineName,
+        'vaccination_date': vaccinationDate.toIso8601String().split('T')[0],
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data saved successfully!')));
+      _temperatureController.clear();
+      _weightController.clear();
+      _vaccineNameController.clear();
+      setState(() {
+        _vaccinationDate = null;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save data')));
+    }
+  }
 }
 
-class InputPage extends StatefulWidget {
-  final int babyId;
-  const InputPage({super.key, required this.babyId});
+class BabyHealthHistoryPage extends StatefulWidget {
+  final String babyId;
+
+  BabyHealthHistoryPage({required this.babyId});
 
   @override
-  State<InputPage> createState() => _InputPageState();
+  _BabyHealthHistoryPageState createState() => _BabyHealthHistoryPageState();
 }
 
-class _InputPageState extends State<InputPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _heightController = TextEditingController();
-  final _weightController = TextEditingController();
-  final _temperatureController = TextEditingController();
-  final _vaccinationController = TextEditingController();
+class _BabyHealthHistoryPageState extends State<BabyHealthHistoryPage> {
+  late Future<Map<String, dynamic>> _healthData;
+  bool _showChartView = true;
 
-  void _saveData() async {
-    if (_formKey.currentState!.validate()) {
-      final data = BabyHealthData(
-        height: double.parse(_heightController.text),
-        weight: double.parse(_weightController.text),
-        temperature: double.parse(_temperatureController.text),
-        vaccination: _vaccinationController.text,
-      );
-      await HealthStorage().saveData(widget.babyId, data);
+  @override
+  void initState() {
+    super.initState();
+    _healthData = _fetchHealthData();
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Data saved successfully!")),
-      );
+  Future<Map<String, dynamic>> _fetchHealthData() async {
+    final url = Uri.parse('http://192.168.1.10:5000/baby-health-history/${widget.babyId}');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load health data');
     }
   }
 
-  @override
-  void dispose() {
-    _heightController.dispose();
-    _weightController.dispose();
-    _temperatureController.dispose();
-    _vaccinationController.dispose();
-    super.dispose();
+  List<FlSpot> _createSpots(List<dynamic> list, String key) {
+    List<FlSpot> spots = [];
+    for (int i = 0; i < list.length; i++) {
+      final value = list[i][key];
+      if (value != null) {
+        spots.add(FlSpot(i.toDouble(), double.tryParse(value.toString()) ?? 0.0));
+      }
+    }
+    return spots;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Enter Baby Health Data")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _heightController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Height (cm)"),
-                validator: (value) => value!.isEmpty ? "Enter height" : null,
+  List<String> _extractDates(List<dynamic> list) {
+    return list.map<String>((e) => e['record_date'] ?? e['vaccination_date'] ?? "").toList();
+  }
+
+  Widget _buildLineChart(List<dynamic> list, String key, String label, Color color) {
+    final spots = _createSpots(list, key);
+    final dates = _extractDates(list);
+
+    if (spots.isEmpty) return Text("No $label data available", style: TextStyle(color: Colors.white70));
+
+    return SizedBox(
+      height: 220,
+      child: LineChart(
+        LineChartData(
+          minY: 0,
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  int index = value.toInt();
+                  if (index >= 0 && index < dates.length) {
+                    return Text(
+                      dates[index].split("T")[0],
+                      style: TextStyle(fontSize: 10, color: Colors.white),
+                    );
+                  }
+                  return Text('');
+                },
               ),
-              TextFormField(
-                controller: _weightController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Weight (kg)"),
-                validator: (value) => value!.isEmpty ? "Enter weight" : null,
+            ),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.white38),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            horizontalInterval: 1,
+            getDrawingHorizontalLine: (value) => FlLine(color: Colors.white24, strokeWidth: 0.5),
+            getDrawingVerticalLine: (value) => FlLine(color: Colors.white24, strokeWidth: 0.5),
+          ),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              barWidth: 3,
+              gradient: LinearGradient(colors: [color, color.withOpacity(0.4)]),
+              belowBarData: BarAreaData(
+                show: true,
+                gradient: LinearGradient(
+                  colors: [color.withOpacity(0.2), color.withOpacity(0)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
-              TextFormField(
-                controller: _temperatureController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Temperature (°C)"),
-                validator: (value) => value!.isEmpty ? "Enter temperature" : null,
-              ),
-              TextFormField(
-                controller: _vaccinationController,
-                decoration: const InputDecoration(labelText: "Vaccination info"),
-                validator: (value) => value!.isEmpty ? "Enter vaccination info" : null,
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _saveData,
-                child: const Text("Save"),
-              )
-            ],
+              dotData: FlDotData(show: true),
+              isStrokeCapRound: true,
+            ),
+          ],
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              tooltipBgColor: Colors.blueGrey.withOpacity(0.8),
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  final idx = spot.x.toInt();
+                  final date = idx < dates.length ? dates[idx].split("T")[0] : "";
+                  return LineTooltipItem(
+                    '$label: ${spot.y}\nDate: $date',
+                    TextStyle(color: Colors.white),
+                  );
+                }).toList();
+              },
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class StatsPage extends StatelessWidget {
-  final int babyId;
-  const StatsPage({super.key, required this.babyId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Health Statistics")),
-      body: FutureBuilder<BabyHealthData?>(
-        future: HealthStorage().loadData(babyId),
+      backgroundColor: Colors.blueGrey.shade900,
+      appBar: AppBar(
+        backgroundColor: Colors.blueGrey,
+        title: Text("Baby's Health History", style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: Icon(_showChartView ? Icons.list : Icons.show_chart, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _showChartView = !_showChartView;
+              });
+            },
+          ),
+        ],
+      ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _healthData,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            return Center(child: CircularProgressIndicator(color: Colors.white));
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: Colors.white)));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No data available', style: TextStyle(color: Colors.white)));
+          } else {
+            final data = snapshot.data!;
+            final tempList = data['temperature'] as List<dynamic>;
+            final weightList = data['weight'] as List<dynamic>;
+            final vaccineList = data['vaccination'] as List<dynamic>;
 
-          final data = snapshot.data;
-          if (data == null) {
-            return const Center(child: Text("No data available"));
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _showChartView
+                    ? [
+                  Text("📈 Temperature", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  _buildLineChart(tempList, 'temperature', 'Temp (°C)', Colors.redAccent),
+                  SizedBox(height: 20),
+                  Text("⚖️ Weight", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  _buildLineChart(weightList, 'weight', 'Weight (kg)', Colors.greenAccent),
+                ]
+                    : [
+                  Text("📋 Temperature Records", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  ...tempList.map((entry) => ListTile(
+                    tileColor: Colors.blueGrey.shade800,
+                    title: Text("Temp: ${entry['temperature']} °C", style: TextStyle(color: Colors.white)),
+                    subtitle: Text("Date: ${entry['record_date']}", style: TextStyle(color: Colors.white70)),
+                  )),
+                  Divider(color: Colors.white70),
+                  Text("📋 Weight Records", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  ...weightList.map((entry) => ListTile(
+                    tileColor: Colors.blueGrey.shade800,
+                    title: Text("Weight: ${entry['weight']} kg", style: TextStyle(color: Colors.white)),
+                    subtitle: Text("Date: ${entry['record_date']}", style: TextStyle(color: Colors.white70)),
+                  )),
+                  Divider(color: Colors.white70),
+                  Text("💉 Vaccination Records", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                  ...vaccineList.map((entry) => ListTile(
+                    tileColor: Colors.blueGrey.shade800,
+                    title: Text("Vaccine: ${entry['vaccine_name']}", style: TextStyle(color: Colors.white)),
+                    subtitle: Text(
+                      "Date: ${entry['vaccination_date']}, Status: ${entry['status']}",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )),
+                ],
+              ),
+            );
           }
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Height: ${data.height} cm", style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 10),
-                Text("Weight: ${data.weight} kg", style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 10),
-                Text("Temperature: ${data.temperature} °C", style: TextStyle(fontSize: 18)),
-                const SizedBox(height: 10),
-                Text("Vaccination Info: ${data.vaccination}", style: TextStyle(fontSize: 18)),
-              ],
-            ),
-          );
         },
       ),
     );
   }
 }
+
+
 

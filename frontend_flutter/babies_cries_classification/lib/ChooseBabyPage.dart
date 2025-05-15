@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_localizations.dart';
+
 class Baby {
   final String id;
   final String firstName;
@@ -179,7 +181,7 @@ class _ChooseBabyPageState extends State<ChooseBabyPage> {
                         end: Alignment.bottomRight,
                       ).createShader(bounds),
                   child: Text(
-                    "Choose Baby",
+                    AppLocalizations.of(context)!.translate("choose_baby"),
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -204,7 +206,7 @@ class _ChooseBabyPageState extends State<ChooseBabyPage> {
               children: [
                 if (_babies.isEmpty)
                   Text(
-                    'No babies found. Add a baby!',
+                    AppLocalizations.of(context)!.translate("no_babies_found"),
                     style: TextStyle(
                       fontSize: 22,
                       color: Colors.blueGrey,
@@ -282,7 +284,7 @@ class _ChooseBabyPageState extends State<ChooseBabyPage> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
-                              'Age: ${baby.age}\nNationality: ${baby.nationality}',
+                              '${AppLocalizations.of(context)!.translate("age")}: ${baby.age}\n${AppLocalizations.of(context)!.translate("nationality")}: ${baby.nationality}',
                               style: TextStyle(
                                 fontSize: 14,
                                 height: 1.4,

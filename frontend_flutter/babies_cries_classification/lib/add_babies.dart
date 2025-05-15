@@ -4,7 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:country_picker/country_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'app_localizations.dart';
 
 
 class AddBabiesPage extends StatefulWidget {
@@ -27,15 +30,14 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
     return prefs.getInt('mother_id');
   }
 
-  // Function to fetch the profile picture URL for each baby
   Future<String?> _getProfilePictureUrl(String babyId) async {
     final response = await http.get(Uri.parse('$serverIp/get_baby_profile/$babyId'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      // Ensure the backend returns a relative URL and append the server IP
-      return data['profile_picture_url'] != null
-          ? '$serverIp${data['profile_picture_url']}'
-          : null;
+      final profileUrl = data['profile_picture_url'];
+      if (profileUrl != null && profileUrl.toString().isNotEmpty) {
+        return '$serverIp$profileUrl?ts=${DateTime.now().millisecondsSinceEpoch}';
+      }
     }
     return null;
   }
@@ -47,9 +49,7 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
       return;
     }
 
-    final response = await http.get(
-      Uri.parse('$serverIp/get_babies_by_mother/$motherId'),
-    );
+    final response = await http.get(Uri.parse('$serverIp/get_babies_by_mother/$motherId'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
@@ -65,17 +65,16 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tr = AppLocalizations.of(context)!.translate;
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
           Positioned.fill(
             child: Image.asset(
-              'assets/hello2.jpeg', // Background image
+              'assets/hello2.jpeg',
               fit: BoxFit.cover,
             ),
           ),
-          // Custom header (replaces AppBar)
           Padding(
             padding: const EdgeInsets.only(top: 50, left: 16, right: 16),
             child: Row(
@@ -88,15 +87,13 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
                     colors: [Colors.white, Colors.white],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
                   ).createShader(bounds),
                   child: Text(
-                    "Add Baby",
+                    tr("add_baby"),
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white, // Required for ShaderMask
+                      color: Colors.white,
                       shadows: [
                         Shadow(
                           blurRadius: 4,
@@ -110,14 +107,13 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
               ],
             ),
           ),
-          // Main content
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_babies.isEmpty)
                   Text(
-                    'No babies found. Add a baby!',
+                    tr("no_babies_found"),
                     style: TextStyle(
                       fontSize: 22,
                       color: Colors.blueGrey,
@@ -131,37 +127,24 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      color: Color(0xFFF3E8FF), // Soft lavender background
+                      color: Color(0xFFF3E8FF),
                       elevation: 6,
                       shadowColor: Colors.purple.withOpacity(0.3),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                         child: ListTile(
                           contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                          leading: FutureBuilder(
+                          leading: FutureBuilder<String?>(
                             future: _getProfilePictureUrl(baby.id.toString()),
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
                                 return CircleAvatar(
                                   radius: 30,
                                   backgroundColor: Colors.deepPurple[200],
-                                  child: CircularProgressIndicator(),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 );
                               }
-                              if (snapshot.hasError) {
-                                return CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: Colors.deepPurple[200],
-                                  child: Text(
-                                    baby.firstName[0].toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                );
-                              }
+
                               final profileImageUrl = snapshot.data;
                               return CircleAvatar(
                                 radius: 30,
@@ -193,7 +176,7 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
-                              'Age: ${baby.age}\nNationality: ${baby.nationality}',
+                              '${tr("age")}: ${baby.age}\n${tr("nationality")}: ${baby.nationality}',
                               style: TextStyle(
                                 fontSize: 14,
                                 height: 1.4,
@@ -201,11 +184,11 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
                               ),
                             ),
                           ),
-                          onTap: () {
-                            Navigator.push(
+                          onTap: () async {
+                            final shouldRefresh = await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => BabyProfilePage(
+                                builder: (_) => BabyProfilePage(
                                   babyId: baby.id,
                                   firstName: baby.firstName,
                                   lastName: baby.lastName,
@@ -215,6 +198,10 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
                                 ),
                               ),
                             );
+
+                            if (shouldRefresh == true) {
+                              _loadBabies();
+                            }
                           },
                         ),
                       ),
@@ -231,18 +218,20 @@ class _AddBabiesPageState extends State<AddBabiesPage> {
             context: context,
             builder: (context) => BabyCreationDialog(
               onBabyAdded: () {
-                _loadBabies(); // Reload babies after adding a new one
+                _loadBabies();
               },
             ),
           );
         },
         icon: Icon(Icons.add),
-        label: Text("Baby"),
+        label: Text(tr("baby")),
         backgroundColor: Colors.purple[900],
       ),
     );
   }
 }
+
+
 
   class Baby {
   final String id;
@@ -305,12 +294,21 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
   }
 
   Future<void> _loadProfileData() async {
-    final response = await http.get(Uri.parse('$serverIp/get_baby_profile/${widget.babyId}'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        _profileImageUrl = '$serverIp${data['profile_picture_url']}';
-      });
+    try {
+      final response = await http.get(Uri.parse('$serverIp/get_baby_profile/${widget.babyId}'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          final profileUrl = data['profile_picture_url'];
+          if (profileUrl != null && profileUrl.toString().isNotEmpty) {
+            _profileImageUrl = '$serverIp$profileUrl?ts=${DateTime.now().millisecondsSinceEpoch}';
+          } else {
+            _profileImageUrl = null;
+          }
+        });
+      }
+    } catch (e) {
+      print("Failed to load profile data: $e");
     }
   }
 
@@ -327,13 +325,14 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
     final response = await request.send();
 
     if (response.statusCode == 200) {
+      await response.stream.bytesToString(); // Ensure server finished
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile picture updated!')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.translate("profilePictureUpdated"))),
       );
-      _loadProfileData();
+      await _loadProfileData(); // Refresh image
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload profile picture')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.translate("profilePictureFailed"))),
       );
     }
   }
@@ -342,12 +341,12 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
     final response = await http.delete(Uri.parse('$serverIp/delete_baby/${widget.babyId}'));
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Baby profile deleted successfully!')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.translate("profileDeleted"))),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true); // Signal parent to refresh list
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete profile.')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.translate("profileDeleteFailed"))),
       );
     }
   }
@@ -356,14 +355,20 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete Profile'),
-        content: Text('Are you sure you want to delete this baby\'s profile?'),
+        title: Text(AppLocalizations.of(context)!.translate("deleteProfile")),
+        content: Text(AppLocalizations.of(context)!.translate("deleteProfileConfirm")),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-          TextButton(onPressed: () {
-            _deleteProfile();
-            Navigator.pop(context);
-          }, child: Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.of(context)!.translate("cancel")),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await _deleteProfile();
+            },
+            child: Text(AppLocalizations.of(context)!.translate("delete")),
+          ),
         ],
       ),
     );
@@ -379,48 +384,88 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Modify Profile'),
+        title: Text(AppLocalizations.of(context)!.translate("modify_profile")),
         content: SingleChildScrollView(
           child: Column(
             children: [
-              TextField(controller: firstNameController, decoration: InputDecoration(labelText: 'First Name')),
-              TextField(controller: lastNameController, decoration: InputDecoration(labelText: 'Last Name')),
-              TextField(controller: ageController, decoration: InputDecoration(labelText: 'Age')),
-              TextField(controller: nationalityController, decoration: InputDecoration(labelText: 'Nationality')),
-              TextField(controller: healthStatusController, decoration: InputDecoration(labelText: 'Health Status')),
+              TextField(
+                controller: firstNameController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.translate("first_name"),
+                ),
+              ),
+              TextField(
+                controller: lastNameController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.translate("last_name"),
+                ),
+              ),
+              TextField(
+                controller: ageController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.translate("age"),
+                ),
+              ),
+              TextField(
+                controller: nationalityController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.translate("nationality"),
+                ),
+              ),
+              TextField(
+                controller: healthStatusController,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context)!.translate("health_status"),
+                ),
+              ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-          TextButton(onPressed: () async {
-            final updatedData = {
-              'first_name': firstNameController.text,
-              'last_name': lastNameController.text,
-              'age': ageController.text,
-              'nationality': nationalityController.text,
-              'health_status': healthStatusController.text,
-            };
-            final response = await http.put(
-              Uri.parse('$serverIp/update_baby/${widget.babyId}'),
-              headers: {'Content-Type': 'application/json'},
-              body: json.encode(updatedData),
-            );
-            if (response.statusCode == 200) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Profile updated successfully!')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(AppLocalizations.of(context)!.translate("cancel")),
+          ),
+          TextButton(
+            onPressed: () async {
+              final updatedData = {
+                'first_name': firstNameController.text,
+                'last_name': lastNameController.text,
+                'age': ageController.text,
+                'nationality': nationalityController.text,
+                'health_status': healthStatusController.text,
+              };
+
+              final response = await http.put(
+                Uri.parse('$serverIp/update_baby/${widget.babyId}'),
+                headers: {'Content-Type': 'application/json'},
+                body: json.encode(updatedData),
               );
-              Navigator.pop(context);
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to update profile.')),
-              );
-            }
-          }, child: Text('Save Changes')),
+
+              if (response.statusCode == 200) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.translate("profile_updated")),
+                  ),
+                );
+                Navigator.pop(context); // Close dialog
+                await _loadProfileData(); // Refresh local state
+                Navigator.pop(context, true); // Notify parent
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.translate("profile_update_failed")),
+                  ),
+                );
+              }
+            },
+            child: Text(AppLocalizations.of(context)!.translate("save_changes")),
+          ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -439,11 +484,15 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
               children: [
                 IconButton(
                   icon: Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(context, true), // Signal parent to refresh
                 ),
-                Text(
-                  "${widget.firstName} ${widget.lastName}'s Profile",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                Expanded(
+                  child: Text(
+                    "${AppLocalizations.of(context)!.translate("profileTitle")}: ${widget.firstName} ${widget.lastName}",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 IconButton(
                   icon: Icon(Icons.photo_album, color: Colors.white),
@@ -481,13 +530,13 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                       onTap: _updateProfilePicture,
                       child: CircleAvatar(
                         radius: 50,
+                        backgroundColor: Colors.deepPurple[300],
                         backgroundImage: _profileImageUrl != null
-                            ? NetworkImage(_profileImageUrl!)
+                            ? NetworkImage(_profileImageUrl!, headers: {'Cache-Control': 'no-cache'})
                             : null,
                         child: _profileImageUrl == null
                             ? Text(widget.firstName[0], style: TextStyle(fontSize: 36, color: Colors.white))
                             : null,
-                        backgroundColor: Colors.deepPurple[300],
                       ),
                     ),
                     SizedBox(height: 20),
@@ -496,11 +545,20 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.deepPurple[800]),
                     ),
                     SizedBox(height: 12),
-                    Text('Age: ${widget.age}', style: TextStyle(fontSize: 16, color: Colors.deepPurple[600])),
+                    Text(
+                      '${AppLocalizations.of(context)!.translate("age")}: ${widget.age}',
+                      style: TextStyle(fontSize: 16, color: Colors.deepPurple[600]),
+                    ),
                     SizedBox(height: 6),
-                    Text('Nationality: ${widget.nationality}', style: TextStyle(fontSize: 16, color: Colors.deepPurple[600])),
+                    Text(
+                      '${AppLocalizations.of(context)!.translate("nationality")}: ${widget.nationality}',
+                      style: TextStyle(fontSize: 16, color: Colors.deepPurple[600]),
+                    ),
                     SizedBox(height: 6),
-                    Text('Health Status: ${widget.healthStatus}', style: TextStyle(fontSize: 16, color: Colors.deepPurple[600])),
+                    Text(
+                      '${AppLocalizations.of(context)!.translate("baby_health")}: ${widget.healthStatus}',
+                      style: TextStyle(fontSize: 16, color: Colors.deepPurple[600]),
+                    ),
                   ],
                 ),
               ),
@@ -516,6 +574,7 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
             onPressed: _showModifyDialog,
             backgroundColor: Colors.deepPurple[900],
             child: Icon(Icons.edit, color: Colors.white),
+            tooltip: AppLocalizations.of(context)!.translate("modify_profile"),
           ),
           SizedBox(height: 12),
           FloatingActionButton(
@@ -523,11 +582,13 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
             onPressed: _showDeleteDialog,
             backgroundColor: Colors.deepPurple[900],
             child: Icon(Icons.delete_forever, color: Colors.white),
+            tooltip: AppLocalizations.of(context)!.translate("delete_profile"),
           ),
         ],
       ),
     );
   }
+
 }
 
 
@@ -563,6 +624,7 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getInt('mother_id');
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -653,8 +715,8 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
                   labelText: 'Nationality',
                   labelStyle: TextStyle(color: Color(0xFF4A148C)),
                   border: OutlineInputBorder(),
-                  suffixIcon: Icon(
-                      Icons.arrow_drop_down, color: Color(0xFF4A148C)),
+                  suffixIcon:
+                  Icon(Icons.arrow_drop_down, color: Color(0xFF4A148C)),
                 ),
                 onTap: () {
                   showCountryPicker(
@@ -678,8 +740,8 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
                 items: healthStatuses.map((String status) {
                   return DropdownMenuItem<String>(
                     value: status,
-                    child: Text(status, style: const TextStyle(color: Color(
-                        0xFF4A148C))),
+                    child: Text(status,
+                        style: const TextStyle(color: Color(0xFF4A148C))),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -694,8 +756,8 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text(
-                        'Cancel', style: TextStyle(color: Color(0xFF4A148C))),
+                    child: const Text('Cancel',
+                        style: TextStyle(color: Color(0xFF4A148C))),
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -709,7 +771,8 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
                       if (motherId == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content: Text('Mother ID not found. Please login again.')),
+                              content: Text(
+                                  'Mother ID not found. Please login again.')),
                         );
                         return;
                       }
@@ -733,15 +796,15 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
 
                       if (response.statusCode == 201) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Baby added successfully!')),
+                          const SnackBar(
+                              content: Text('Baby added successfully!')),
                         );
-                        Navigator.of(context).pop();
-                        widget.onBabyAdded();
-
-                        // Navigate to AddBabiesPage
+                        widget.onBabyAdded(); // callback
+                        Navigator.of(context).pop(); // close dialog
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => AddBabiesPage()),
+                          MaterialPageRoute(
+                              builder: (_) => AddBabiesPage()),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -752,7 +815,7 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
                     child: const Text('Save'),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -772,7 +835,7 @@ class _BabyCreationDialogState extends State<BabyCreationDialog> {
 
 class _AlbumPageState extends State<AlbumPage> {
   final ImagePicker _picker = ImagePicker();
-  List<String> _imageUrls = [];
+  List<Map<String, dynamic>> _images = [];
   bool _isLoading = false;
 
   @override
@@ -786,8 +849,9 @@ class _AlbumPageState extends State<AlbumPage> {
       Uri.parse('http://192.168.1.10:5000/get_pictures?baby_id=${widget.babyId}'),
     );
     if (response.statusCode == 200) {
+      final data = json.decode(response.body);
       setState(() {
-        _imageUrls = List<String>.from(json.decode(response.body));
+        _images = List<Map<String, dynamic>>.from(data);
       });
     }
   }
@@ -810,12 +874,12 @@ class _AlbumPageState extends State<AlbumPage> {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Image ajoutée !'), backgroundColor: Colors.deepPurple),
+        SnackBar(content: Text('Image added!'), backgroundColor: Colors.deepPurple),
       );
       _fetchImages();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur d\'upload'), backgroundColor: Colors.redAccent),
+        SnackBar(content: Text('Upload error'), backgroundColor: Colors.redAccent),
       );
     }
   }
@@ -834,22 +898,13 @@ class _AlbumPageState extends State<AlbumPage> {
           children: [
             Center(
               child: Text(
-                "Ajouter une image",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
-                ),
+                "Add Image",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple),
               ),
             ),
             ListTile(
               leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
-              title: Text(
-                "Prendre une photo",
-                style: TextStyle(
-                  color: Colors.deepPurple, // Set the color of the text to match the icon color
-                ),
-              ),
+              title: Text("Take a photo", style: TextStyle(color: Colors.deepPurple)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -857,15 +912,55 @@ class _AlbumPageState extends State<AlbumPage> {
             ),
             ListTile(
               leading: Icon(Icons.photo_library, color: Colors.deepPurple),
-              title: Text("Choisir depuis la galerie",
-                style: TextStyle(
-                  color: Colors.deepPurple, // Set the color of the text to match the icon color
-                ),
-              ),
+              title: Text("Choose from gallery", style: TextStyle(color: Colors.deepPurple)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showImageDetail(String imageUrl, String date) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.black,
+              ),
+              child: SingleChildScrollView(  // Added SingleChildScrollView here
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(imageUrl),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      "Added on: $date",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close),
+                      label: Text("Close"),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -878,52 +973,67 @@ class _AlbumPageState extends State<AlbumPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF3E5F5),
       appBar: AppBar(
-        title: Text(
-          'Album Photo',
-          style: TextStyle(
-            color: Colors.white, // Gold color for the text
-            fontWeight: FontWeight.bold, // Make the text bold
-            fontSize: 22, // Optional: Adjust font size to your preference
-          ),
-        ),
+        title: Text('Baby Gallery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
         backgroundColor: Colors.deepPurple[200],
         foregroundColor: Colors.white,
         elevation: 4,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: Colors.deepPurple[200]))
-          : _imageUrls.isEmpty
+          : _images.isEmpty
           ? Center(
-        child: Text(
-          'Aucune image pour l’instant.',
-          style: TextStyle(color: Colors.deepPurple, fontSize: 16),
-        ),
+        child: Text('No images yet.', style: TextStyle(color: Colors.deepPurple, fontSize: 16)),
       )
-          : GridView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _imageUrls.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemBuilder: (context, index) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              _imageUrls[index],
-              fit: BoxFit.cover,
+          : SingleChildScrollView( // Wrap the Column in SingleChildScrollView
+        child: Column( // Column used to arrange widgets vertically
+          children: [
+            GridView.builder(
+              padding: const EdgeInsets.all(12),
+              shrinkWrap: true, // Allows GridView to take as much space as needed
+              physics: NeverScrollableScrollPhysics(), // Disable scrolling within the GridView itself
+              itemCount: _images.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemBuilder: (context, index) {
+                final image = _images[index];
+                return GestureDetector(
+                  onTap: () => _showImageDetail(image['url'], image['date']),
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.network(image['url'], fit: BoxFit.cover),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                        color: Colors.black45,
+                        child: Text(
+                          DateFormat('dd/MM/yyyy').format(DateTime.parse(image['date'])),
+                          style: TextStyle(color: Colors.white, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'addImage',
         backgroundColor: Colors.deepPurple[200],
         onPressed: _showImagePickerOptions,
         child: Icon(Icons.add_a_photo),
-        tooltip: 'Add image',
+        tooltip: 'Add an image',
       ),
     );
   }
 }
+
+
+
